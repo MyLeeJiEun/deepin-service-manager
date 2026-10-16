@@ -1,0 +1,74 @@
+name: DBus interface test
+
+# deepin-service-manager 本体的 DBus 接口测试(process 形态):
+# - ServiceManager 常驻模式(无参启动):public 接口 Groups/Version
+# - 插件加载链路(--name org.deepin.service.demo1):json 解析 → 组路由 →
+#   插件加载 → 注册,用仓内 demo 插件端到端验证 manager 机制
+#
+# Debug 构建的 SERVICE_CONFIG_DIR/SERVICE_LIB_DIR 指向构建树(share/、lib/),
+# demo 插件 json 与 so 就位即被读取,无需 install —— 这是沙箱测试的关键。
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  dbus-interface:
+    runs-on: ubuntu-latest
+    container: linuxdeepin/deepin:crimson
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [manager, plugin-loading]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装构建依赖
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends \
+            ca-certificates git make cmake pkg-config build-essential g++ \
+            qt6-base-dev qt6-tools-dev qt6-tools-dev-tools \
+            libsystemd-dev libglib2.0-dev \
+            libdtk6gui-dev libdtk6core-dev \
+            python3-pip python3-setuptools python3-wheel python3-yaml \
+            python3-dbus python3-gi python3-dbusmock \
+            deepin-desktop-schemas \
+            gdb
+
+      - name: 构建被测物(Debug + ENABLE_DEMO)
+        # Debug 使 SERVICE_CONFIG_DIR/SERVICE_LIB_DIR 指向构建树;
+        # ENABLE_DEMO 构建 demo 插件(plugin-loading 套件的被测物)
+        run: |
+          cmake -S . -B build-dsm -DCMAKE_BUILD_TYPE=Debug -DENABLE_DEMO=ON
+          cmake --build build-dsm -j"$(nproc)"
+          test -f build-dsm/deepin-service-manager
+          test -f build-dsm/lib/libplugin-qt-demo1.so
+
+      - name: 安装 dbus-testing
+        env:
+          DBUS_TESTING_REPO: https://github.com/MyLeeJiEun/deepin-dbus-testing
+        run: |
+          git clone --depth 1 "${DBUS_TESTING_REPO}" /tmp/dbus-testing-src
+          pip install --break-system-packages --no-build-isolation --no-deps \
+            /tmp/dbus-testing-src
+          dbus-testing --version
+
+      - name: DBus 接口测试
+        run: |
+          if [ "${{ matrix.suite }}" = manager ]; then
+            SUITE="tests/dbus"
+          else
+            SUITE="tests/dbus/${{ matrix.suite }}"
+          fi
+          dbus-testing run "$SUITE" --build-dir build-dsm --report "artifacts/${{ matrix.suite }}"
+
+      - name: 上传报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbus-test-report-${{ matrix.suite }}
+          path: artifacts/
+          if-no-files-found: warn

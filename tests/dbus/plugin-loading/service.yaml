@@ -1,0 +1,43 @@
+# deepin-service-manager 插件加载链路测试(--name 单插件加载)。
+# Debug 构建 SERVICE_CONFIG_DIR 指向构建树:demo1 插件 json(group=core)
+# 与 libplugin-qt-demo1.so 均在 build 内,被测进程 -n org.deepin.service.demo1
+# 按名加载后注册 org.deepin.service.demo1。
+# 这是 manager 机制本身的端到端验证:json 解析 → 组路由 → 插件加载 → 注册。
+apiVersion: v1
+process: deepin-service-manager
+mode: isolate
+kind: process
+tier: T3
+
+services:
+  # 仅断言插件服务:--name 模式下 manager 本体不注册 ServiceManager1
+  # (loadByName 经 PluginManager 直接加载;RegisterGroup 的对端在真实部署
+  # 里由 systemd 常驻实例提供,单进程测试中不存在)
+  - org.deepin.service.demo1
+
+binary:
+  search:
+    - ${BUILD_DIR}/deepin-service-manager
+
+args: ["--scope", "user", "--name", "org.deepin.service.demo1"]
+
+# --scope user:CI 容器以 root 运行,detectScopeBySystemd() 会判成 system
+# scope 而 QDBusConnection::SystemBus 找不到地址;密闭测试主总线就是
+# 框架注入的私有 session 总线,显式指定 user 绕开自动探测
+sandbox:
+  home: tmp
+  env:
+    QT_QPA_PLATFORM: offscreen
+    LANG: C.UTF-8
+    LANGUAGE: en_US
+
+ready:
+  name-owner:
+    - org.deepin.service.demo1
+  timeout: 20s
+
+ignore:
+  interfaces:
+    - "org.freedesktop.DBus.*"
+
+teardown: kill

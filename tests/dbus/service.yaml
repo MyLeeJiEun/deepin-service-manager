@@ -1,0 +1,39 @@
+# deepin-service-manager 本体的 DBus 接口测试(process 形态)。
+# Debug 构建的 SERVICE_CONFIG_DIR/SERVICE_LIB_DIR 指向构建树
+# (share/、lib/),misc 安装到 build 内即被读取,无需 install。
+# 无参启动 → ServiceManager 常驻模式,注册 org.deepin.ServiceManager1。
+apiVersion: v1
+process: deepin-service-manager
+mode: isolate
+kind: process
+tier: T3
+
+services:
+  - org.deepin.ServiceManager1
+
+binary:
+  search:
+    - ${BUILD_DIR}/deepin-service-manager
+
+args: ["--scope", "user"]
+
+# --scope user:CI 容器以 root 运行,detectScopeBySystemd() 会判成 system
+# scope 而 QDBusConnection::SystemBus 找不到地址;密闭测试主总线就是
+# 框架注入的私有 session 总线,显式指定 user 绕开自动探测
+sandbox:
+  home: tmp
+  env:
+    QT_QPA_PLATFORM: offscreen
+    LANG: C.UTF-8
+    LANGUAGE: en_US
+
+ready:
+  name-owner:
+    - org.deepin.ServiceManager1
+  timeout: 20s
+
+ignore:
+  interfaces:
+    - "org.freedesktop.DBus.*"
+
+teardown: kill

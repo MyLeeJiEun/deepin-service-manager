@@ -1,0 +1,9 @@
+<node>
+  <object path="/org/deepin/service/demo1">
+    <interface name="org.deepin.service.demo1">
+      <method name="Hello">
+        <arg type="s" direction="out"/>
+      </method>
+    </interface>
+  </object>
+</node>

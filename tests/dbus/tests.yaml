@@ -1,0 +1,28 @@
+# deepin-service-manager 本体(process 形态)。
+# 无参启动 → ServiceManager 常驻模式:
+#   org.deepin.ServiceManager1 @ /org/deepin/ServiceManager1(public)
+#   org.deepin.ServiceManager1 @ /org/deepin/ServiceManager1/Private(private)
+# Public 暴露只读属性 Groups/Version;Private 暴露 RegisterGroup。
+apiVersion: v1
+cases:
+  - name: groups-property-readable
+    get-prop:
+      object: /org/deepin/ServiceManager1
+      property: Groups
+    expect: { signature: "as" }
+
+  - name: version-property-readable
+    get-prop:
+      object: /org/deepin/ServiceManager1
+      property: Version
+    expect: { value: "1.0" }
+
+  - name: register-group-callable
+    call:
+      object: /org/deepin/ServiceManager1/Private
+      interface: org.deepin.ServiceManager1
+      method: RegisterGroup
+      args: ["test-group", ":1.1"]
+
+  - name: contract
+    check-contract: {}

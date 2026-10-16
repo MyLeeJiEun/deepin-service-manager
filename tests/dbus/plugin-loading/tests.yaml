@@ -1,0 +1,13 @@
+# 插件加载链路用例:demo1 插件经 -n 按名加载,Hello 返回问候串。
+apiVersion: v1
+cases:
+  - name: demo1-hello-callable
+    call:
+      service: org.deepin.service.demo1
+      object: /org/deepin/service/demo1
+      interface: org.deepin.service.demo1
+      method: Hello
+    expect: { signature: "s" }
+
+  - name: contract
+    check-contract: {}

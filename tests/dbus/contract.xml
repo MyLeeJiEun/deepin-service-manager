@@ -1,0 +1,13 @@
+<node>
+  <object path="/org/deepin/Group1/core">
+    <interface name="org.deepin.Group1">
+      <property name="Plugins" type="as" access="read"/>
+    </interface>
+  </object>
+  <object path="/org/deepin/ServiceManager1">
+    <interface name="org.deepin.ServiceManager1">
+      <property name="Groups" type="as" access="read"/>
+      <property name="Version" type="s" access="read"/>
+    </interface>
+  </object>
+</node>
